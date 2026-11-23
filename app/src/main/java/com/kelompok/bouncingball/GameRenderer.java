@@ -46,14 +46,22 @@ public class GameRenderer implements GLSurfaceView.Renderer {
         gl.glLoadIdentity();
         GLU.gluLookAt(gl, 3.8f, 3.2f, 5.8f, 0f, 0f, 0f, 0f, 1f, 0f);
 
-        Body ball = world.getBall();
-        gl.glPushMatrix();
-        gl.glTranslatef(ball.x, ball.y, ball.z);
-        gl.glScalef(ball.radius, ball.radius, ball.radius);
-        gl.glColor4f(0.2f, 0.78f, 1f, 1f);
-        sphere.draw(gl);
-        gl.glPopMatrix();
+        for (Body body : world.getBodies()) {
+            if (!body.active) {
+                continue;
+            }
+            gl.glPushMatrix();
+            gl.glTranslatef(body.x, body.y, body.z);
+            gl.glScalef(body.radius, body.radius, body.radius);
+            gl.glColor4f(0.2f, 0.78f, 1f, 1f);
+            sphere.draw(gl);
+            gl.glPopMatrix();
+        }
 
         container.draw(gl);
+    }
+
+    public void startGame() {
+        world.start();
     }
 }
