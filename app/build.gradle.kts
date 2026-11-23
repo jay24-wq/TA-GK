@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.bouncingball"
+    namespace = "com.kelompok.bouncingball"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.bouncingball"
+        applicationId = "com.kelompok.bouncingball"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -26,17 +26,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 }
 
 dependencies {
-    implementation(libs.activity.ktx)
-    implementation(libs.appcompat)
-    implementation(libs.constraintlayout)
-    implementation(libs.material)
     testImplementation(libs.junit)
-    androidTestImplementation(libs.espresso.core)
-    androidTestImplementation(libs.ext.junit)
 }
