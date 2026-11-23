@@ -7,13 +7,20 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class GameRenderer implements GLSurfaceView.Renderer {
-    private final GameWorld world;
+    private GameWorld world;
     private final SphereMesh sphere = new SphereMesh(12, 18);
+    private final PyramidMesh pyramid = new PyramidMesh();
     private final ContainerMesh container = new ContainerMesh();
     private long previousFrameNanos;
+    private GameListener listener;
+    private int lastBallScore = -1;
+    private int lastPyramidScore = -1;
+    private boolean finishNotified;
 
-    public GameRenderer(GameWorld world) {
-        this.world = world;
+    public void initializeWorld() {
+        if (world == null) {
+            world = new GameWorld();
+        }
     }
 
     @Override
@@ -40,11 +47,16 @@ public class GameRenderer implements GLSurfaceView.Renderer {
         long now = System.nanoTime();
         float dt = Math.min((now - previousFrameNanos) / 1_000_000_000f, 0.033f);
         previousFrameNanos = now;
-        world.update(dt);
 
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
         gl.glLoadIdentity();
         GLU.gluLookAt(gl, 3.8f, 3.2f, 5.8f, 0f, 0f, 0f, 0f, 1f, 0f);
+        if (world == null) {
+            container.draw(gl);
+            return;
+        }
+        world.update(dt);
+        notifyListener();
 
         for (Body body : world.getBodies()) {
             if (!body.active) {
@@ -53,15 +65,49 @@ public class GameRenderer implements GLSurfaceView.Renderer {
             gl.glPushMatrix();
             gl.glTranslatef(body.x, body.y, body.z);
             gl.glScalef(body.radius, body.radius, body.radius);
-            gl.glColor4f(0.2f, 0.78f, 1f, 1f);
-            sphere.draw(gl);
+            if (body.type == Body.Type.BALL) {
+                gl.glColor4f(0.2f, 0.78f, 1f, 1f);
+                sphere.draw(gl);
+            } else {
+                gl.glColor4f(1f, 0.55f, 0.18f, 1f);
+                pyramid.draw(gl);
+            }
             gl.glPopMatrix();
         }
 
         container.draw(gl);
     }
 
-    public void startGame() {
-        world.start();
+    public void setListener(GameListener listener) {
+        this.listener = listener;
+        lastBallScore = -1;
+        lastPyramidScore = -1;
+    }
+
+    public void resetNotifications() {
+        lastBallScore = -1;
+        lastPyramidScore = -1;
+        finishNotified = false;
+    }
+
+    public GameWorld getWorld() {
+        return world;
+    }
+
+    private void notifyListener() {
+        if (listener == null) {
+            return;
+        }
+        int ballScore = world.getBallScore();
+        int pyramidScore = world.getPyramidScore();
+        if (ballScore != lastBallScore || pyramidScore != lastPyramidScore) {
+            lastBallScore = ballScore;
+            lastPyramidScore = pyramidScore;
+            listener.onScoreChanged(ballScore, pyramidScore);
+        }
+        if (world.getStatus() == GameStatus.FINISHED && !finishNotified) {
+            finishNotified = true;
+            listener.onGameFinished();
+        }
     }
 }

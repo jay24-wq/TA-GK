@@ -6,11 +6,15 @@ import java.util.Random;
 
 /** Simulasi fisika murni agar mudah dijelaskan dan diuji tanpa Android. */
 public class GameWorld {
+    private static final int MAX_BODIES = 12;
+    // Nilai gravitasi diskalakan agar gerak tetap terbaca di ruang wadah yang kecil.
     private static final float GRAVITY_Y = -4.0f;
     private static final float RESTITUTION = 0.94f;
     private final Random random;
     private final List<Body> bodies = new ArrayList<>();
     private GameStatus status;
+    private int ballScore;
+    private int pyramidScore;
 
     public GameWorld() {
         this(System.nanoTime());
@@ -36,6 +40,9 @@ public class GameWorld {
             bounceAtWalls(body);
         }
         checkCollisions();
+        if (!hasActiveBodies()) {
+            status = GameStatus.FINISHED;
+        }
     }
 
     public void start() {
@@ -53,7 +60,19 @@ public class GameWorld {
         bodies.clear();
         bodies.add(new Body(-0.25f, 0f, 0f, 0.18f, Body.Type.BALL));
         bodies.add(new Body(0.25f, 0f, 0f, 0.18f, Body.Type.BALL));
+        ballScore = 0;
+        pyramidScore = 0;
         status = GameStatus.READY;
+    }
+
+    public boolean addPair(Body.Type type) {
+        if (status != GameStatus.READY || bodies.size() + 2 > MAX_BODIES) {
+            return false;
+        }
+        bodies.add(new Body(0f, 0f, 0f, 0.18f, type));
+        bodies.add(new Body(0f, 0f, 0f, 0.18f, type));
+        arrangeReadyBodies();
+        return true;
     }
 
     public List<Body> getBodies() {
@@ -62,6 +81,14 @@ public class GameWorld {
 
     public GameStatus getStatus() {
         return status;
+    }
+
+    public int getBallScore() {
+        return ballScore;
+    }
+
+    public int getPyramidScore() {
+        return pyramidScore;
     }
 
     private void bounceAtWalls(Body body) {
@@ -122,9 +149,17 @@ public class GameWorld {
                     // Pasangan dengan bentuk sama langsung hilang sebagai satu skor.
                     first.active = false;
                     second.active = false;
+                    if (first.type == Body.Type.BALL) {
+                        ballScore++;
+                    } else {
+                        pyramidScore++;
+                    }
                     break;
                 } else {
                     bounceApart(first, second, dx, dy, dz, distanceSquared, radiusSum);
+                    // Koreksi posisi tumbukan bisa mendekatkan objek ke sisi wadah.
+                    bounceAtWalls(first);
+                    bounceAtWalls(second);
                 }
             }
         }
@@ -161,5 +196,28 @@ public class GameWorld {
         second.x += correction * inverseSecondMass * normalX;
         second.y += correction * inverseSecondMass * normalY;
         second.z += correction * inverseSecondMass * normalZ;
+    }
+
+    private boolean hasActiveBodies() {
+        for (Body body : bodies) {
+            if (body.active) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void arrangeReadyBodies() {
+        int columns = 3;
+        int rows = (bodies.size() + columns - 1) / columns;
+        for (int index = 0; index < bodies.size(); index++) {
+            int row = index / columns;
+            int column = index % columns;
+            int itemsInRow = Math.min(columns, bodies.size() - row * columns);
+            Body body = bodies.get(index);
+            body.x = (column - (itemsInRow - 1) / 2f) * 0.42f;
+            body.y = 0f;
+            body.z = (row - (rows - 1) / 2f) * 0.5f;
+        }
     }
 }
