@@ -26,12 +26,16 @@ public class GameWorld {
             return;
         }
         for (Body body : bodies) {
+            if (!body.active) {
+                continue;
+            }
             body.velocityY += GRAVITY_Y * dt;
             body.x += body.velocityX * dt;
             body.y += body.velocityY * dt;
             body.z += body.velocityZ * dt;
             bounceAtWalls(body);
         }
+        checkCollisions();
     }
 
     public void start() {
@@ -93,5 +97,69 @@ public class GameWorld {
 
     private float randomBetween(float minimum, float maximum) {
         return minimum + random.nextFloat() * (maximum - minimum);
+    }
+
+    private void checkCollisions() {
+        for (int firstIndex = 0; firstIndex < bodies.size(); firstIndex++) {
+            Body first = bodies.get(firstIndex);
+            if (!first.active) {
+                continue;
+            }
+            for (int secondIndex = firstIndex + 1; secondIndex < bodies.size(); secondIndex++) {
+                Body second = bodies.get(secondIndex);
+                if (!second.active) {
+                    continue;
+                }
+                float dx = second.x - first.x;
+                float dy = second.y - first.y;
+                float dz = second.z - first.z;
+                float radiusSum = first.radius + second.radius;
+                float distanceSquared = dx * dx + dy * dy + dz * dz;
+                if (distanceSquared >= radiusSum * radiusSum) {
+                    continue;
+                }
+                if (first.type == second.type) {
+                    // Pasangan dengan bentuk sama langsung hilang sebagai satu skor.
+                    first.active = false;
+                    second.active = false;
+                    break;
+                } else {
+                    bounceApart(first, second, dx, dy, dz, distanceSquared, radiusSum);
+                }
+            }
+        }
+    }
+
+    private void bounceApart(Body first, Body second, float dx, float dy, float dz,
+                             float distanceSquared, float radiusSum) {
+        float distance = (float) Math.sqrt(distanceSquared);
+        float normalX = distance > 0f ? dx / distance : 1f;
+        float normalY = distance > 0f ? dy / distance : 0f;
+        float normalZ = distance > 0f ? dz / distance : 0f;
+        float inverseFirstMass = 1f / first.mass;
+        float inverseSecondMass = 1f / second.mass;
+        float inverseMassSum = inverseFirstMass + inverseSecondMass;
+
+        float relativeSpeed = (second.velocityX - first.velocityX) * normalX
+                + (second.velocityY - first.velocityY) * normalY
+                + (second.velocityZ - first.velocityZ) * normalZ;
+        if (relativeSpeed < 0f) {
+            float impulse = -(1f + RESTITUTION) * relativeSpeed / inverseMassSum;
+            first.velocityX -= impulse * inverseFirstMass * normalX;
+            first.velocityY -= impulse * inverseFirstMass * normalY;
+            first.velocityZ -= impulse * inverseFirstMass * normalZ;
+            second.velocityX += impulse * inverseSecondMass * normalX;
+            second.velocityY += impulse * inverseSecondMass * normalY;
+            second.velocityZ += impulse * inverseSecondMass * normalZ;
+        }
+
+        float overlap = radiusSum - distance;
+        float correction = Math.max(overlap - 0.001f, 0f) * 0.8f / inverseMassSum;
+        first.x -= correction * inverseFirstMass * normalX;
+        first.y -= correction * inverseFirstMass * normalY;
+        first.z -= correction * inverseFirstMass * normalZ;
+        second.x += correction * inverseSecondMass * normalX;
+        second.y += correction * inverseSecondMass * normalY;
+        second.z += correction * inverseSecondMass * normalZ;
     }
 }
