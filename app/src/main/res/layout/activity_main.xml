@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="#071423">
 
-    <android.opengl.GLSurfaceView
+    <com.kelompok.bouncingball.GameView
         android:id="@+id/game_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
