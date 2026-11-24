@@ -8,7 +8,8 @@ pasangan dengan bentuk sama menghilang dan menambah skor.
 - Wadah dan objek 3D dengan pencahayaan pada bola dan limas.
 - Objek memantul pada enam sisi wadah.
 - Seret area permainan untuk memutar tampilan wadah dan semua objek.
-- Pasangan bentuk sama menambah skor; tumbukan bentuk berbeda saling memantul.
+- Pasangan bentuk sama langsung menambah skor lalu menyusut selama 0,3 detik;
+  tumbukan bentuk berbeda saling memantul.
 
 ## Kontrol
 

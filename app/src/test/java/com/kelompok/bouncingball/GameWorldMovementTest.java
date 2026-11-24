@@ -129,11 +129,17 @@ public class GameWorldMovementTest {
         world.update(DT);
 
         assertEquals(1, world.getBallScore());
+        assertEquals(Body.State.VANISHING, first.state);
+        assertEquals(Body.State.VANISHING, second.state);
+        assertEquals(GameStatus.PLAYING, world.getStatus());
+        world.update(GameWorld.VANISH_DURATION);
         assertEquals(GameStatus.FINISHED, world.getStatus());
         world.reset();
         assertEquals(GameStatus.READY, world.getStatus());
         assertEquals(0, world.getBallScore());
         assertFalse(world.getBodies().get(0).hasLanded);
+        assertEquals(Body.State.ACTIVE, world.getBodies().get(0).state);
+        assertEquals(1f, world.getBodies().get(0).visualScale, 0f);
         world.start();
         assertEquals(GameStatus.PLAYING, world.getStatus());
     }
@@ -153,6 +159,10 @@ public class GameWorldMovementTest {
         world.update(DT);
 
         assertEquals(1, world.getPyramidScore());
+        assertEquals(Body.State.VANISHING, first.state);
+        assertEquals(Body.State.VANISHING, second.state);
+        assertEquals(GameStatus.PLAYING, world.getStatus());
+        world.update(GameWorld.VANISH_DURATION);
         assertEquals(GameStatus.FINISHED, world.getStatus());
     }
 

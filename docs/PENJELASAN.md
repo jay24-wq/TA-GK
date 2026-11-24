@@ -23,3 +23,18 @@ sedangkan diffuse `(0,9; 0,9; 0,85)` memberi arah cahaya utama. Posisi `(4; 6;
 5; 1)` ditetapkan sebelum kamera dan rotasi tampilan, jadi cahaya tetap di
 posisi layar yang sama ketika wadah diputar. Wadah digambar paling akhir tanpa
 lighting agar garis dan transparansinya tetap seperti semula.
+
+## Animasi menghilang
+
+Saat dua objek sejenis bertabrakan, skor langsung bertambah dan keduanya masuk
+status VANISHING. Selama sekitar `0,3` detik, skala tampilan turun lurus dari
+`1` ke `0`; setelah itu objek berstatus REMOVED. Skala hanya dipakai renderer,
+jadi radius dan tumbukan fisika tidak berubah. Objek VANISHING langsung
+dinonaktifkan dari tumbukan dan keepMoving, lalu diam di posisi terakhir selama
+animasi. Status permainan baru menjadi FINISHED setelah semua objek aktif dan
+semua animasi VANISHING selesai. Ulangi membuat objek baru dengan status normal
+dan skala `1`.
+
+Durasi `VANISH_DURATION = 0,3` detik dipilih supaya efek terlihat tetapi tidak
+memperlambat putaran permainan. Batasannya, efek ini hanya mengecilkan objek;
+tidak ada blur atau efek partikel.

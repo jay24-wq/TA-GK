@@ -103,12 +103,13 @@ public class GameRenderer implements GLSurfaceView.Renderer {
         notifyListener();
 
         for (Body body : world.getBodies()) {
-            if (!body.active) {
+            if (body.state == Body.State.REMOVED) {
                 continue;
             }
             gl.glPushMatrix();
             gl.glTranslatef(body.x, body.y, body.z);
-            gl.glScalef(body.radius, body.radius, body.radius);
+            float renderRadius = body.radius * body.visualScale;
+            gl.glScalef(renderRadius, renderRadius, renderRadius);
             if (body.type == Body.Type.BALL) {
                 gl.glColor4f(0.2f, 0.78f, 1f, 1f);
                 sphere.draw(gl);

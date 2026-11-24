@@ -3,6 +3,7 @@ package com.kelompok.bouncingball;
 /** Data gerak sederhana; tidak bergantung pada Android atau OpenGL. */
 public class Body {
     public enum Type { BALL, PYRAMID }
+    public enum State { ACTIVE, VANISHING, REMOVED }
 
     public float x;
     public float y;
@@ -14,6 +15,9 @@ public class Body {
     public final float radius;
     public final float mass;
     public final Type type;
+    public State state = State.ACTIVE;
+    public float visualScale = 1f;
+    public float vanishTimeRemaining;
     public boolean active = true;
 
     public Body(float x, float y, float z, float radius, Type type) {

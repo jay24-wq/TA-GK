@@ -14,6 +14,8 @@ public class GameWorld {
     // Batas kecepatan menjaga gerak tetap hidup tanpa melesat berlebihan.
     static final float MIN_SPEED = 2.0f;
     static final float MAX_SPEED = 3.5f;
+    // Tiga persepuluh detik cukup untuk melihat pasangan menyusut sebelum selesai.
+    static final float VANISH_DURATION = 0.3f;
     // Kecepatan samping kecil membuat awal permainan tampak jatuh lurus.
     private static final float MAX_START_SIDE_SPEED = 0.1f;
     // Lontaran vertikal minimum memastikan objek mencapai atap.
@@ -44,6 +46,10 @@ public class GameWorld {
             return;
         }
         for (Body body : bodies) {
+            if (body.state == Body.State.VANISHING) {
+                updateVanishing(body, dt);
+                continue;
+            }
             if (!body.active) {
                 continue;
             }
@@ -57,7 +63,7 @@ public class GameWorld {
             keepMoving(body);
         }
         checkCollisions();
-        if (!hasActiveBodies()) {
+        if (!hasActiveBodies() && !hasVanishingBodies()) {
             status = GameStatus.FINISHED;
         }
     }
@@ -212,13 +218,13 @@ public class GameWorld {
                 }
                 if (first.type == second.type) {
                     // Pasangan dengan bentuk sama langsung hilang sebagai satu skor.
-                    first.active = false;
-                    second.active = false;
                     if (first.type == Body.Type.BALL) {
                         ballScore++;
                     } else {
                         pyramidScore++;
                     }
+                    beginVanishing(first);
+                    beginVanishing(second);
                     break;
                 } else {
                     bounceApart(first, second, dx, dy, dz, distanceSquared, radiusSum);
@@ -267,11 +273,36 @@ public class GameWorld {
 
     private boolean hasActiveBodies() {
         for (Body body : bodies) {
-            if (body.active) {
+            if (body.active && body.state == Body.State.ACTIVE) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean hasVanishingBodies() {
+        for (Body body : bodies) {
+            if (body.state == Body.State.VANISHING) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void beginVanishing(Body body) {
+        body.active = false;
+        body.state = Body.State.VANISHING;
+        body.vanishTimeRemaining = VANISH_DURATION;
+        body.visualScale = 1f;
+    }
+
+    private void updateVanishing(Body body, float dt) {
+        body.vanishTimeRemaining = Math.max(0f, body.vanishTimeRemaining - dt);
+        body.visualScale = body.vanishTimeRemaining / VANISH_DURATION;
+        if (body.vanishTimeRemaining == 0f) {
+            body.state = Body.State.REMOVED;
+            body.visualScale = 0f;
+        }
     }
 
     private void arrangeReadyBodies() {
