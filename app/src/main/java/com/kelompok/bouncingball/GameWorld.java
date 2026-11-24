@@ -7,6 +7,12 @@ import java.util.Random;
 /** Simulasi fisika murni agar mudah dijelaskan dan diuji tanpa Android. */
 public class GameWorld {
     private static final int MAX_BODIES = 12;
+    // Sampel tiap 30 ms memberi jejak konsisten tanpa terlalu sering merekam.
+    static final float TRAIL_INTERVAL = 0.03f;
+    // Enam posisi memberi ekor pendek dan membatasi biaya gambar paling banyak 72 salinan.
+    static final int TRAIL_LENGTH = 6;
+    // Bisa dimatikan untuk membandingkan performa tanpa menambah kontrol UI.
+    static final boolean TRAIL_ENABLED = true;
     // Cukup kuat untuk membuat objek jatuh jelas sebelum menyentuh lantai.
     private static final float GRAVITY_Y = -4.0f;
     // Pantulan dinding hampir elastis agar energi tidak cepat habis.
@@ -61,6 +67,7 @@ public class GameWorld {
             body.z += body.velocityZ * dt;
             bounceAtWalls(body);
             keepMoving(body);
+            recordTrail(body, dt);
         }
         checkCollisions();
         if (!hasActiveBodies() && !hasVanishingBodies()) {
@@ -74,6 +81,7 @@ public class GameWorld {
         }
         status = GameStatus.PLAYING;
         for (Body body : bodies) {
+            clearTrail(body);
             body.hasLanded = false;
             body.velocityX = randomBetween(-MAX_START_SIDE_SPEED, MAX_START_SIDE_SPEED);
             body.velocityY = 0f;
@@ -82,6 +90,9 @@ public class GameWorld {
     }
 
     public void reset() {
+        for (Body body : bodies) {
+            clearTrail(body);
+        }
         bodies.clear();
         bodies.add(new Body(-0.25f, 0f, 0f, 0.18f, Body.Type.BALL));
         bodies.add(new Body(0.25f, 0f, 0f, 0.18f, Body.Type.BALL));
@@ -290,6 +301,7 @@ public class GameWorld {
     }
 
     private void beginVanishing(Body body) {
+        clearTrail(body);
         body.active = false;
         body.state = Body.State.VANISHING;
         body.vanishTimeRemaining = VANISH_DURATION;
@@ -300,9 +312,34 @@ public class GameWorld {
         body.vanishTimeRemaining = Math.max(0f, body.vanishTimeRemaining - dt);
         body.visualScale = body.vanishTimeRemaining / VANISH_DURATION;
         if (body.vanishTimeRemaining == 0f) {
+            clearTrail(body);
             body.state = Body.State.REMOVED;
             body.visualScale = 0f;
         }
+    }
+
+    private void recordTrail(Body body, float dt) {
+        if (!TRAIL_ENABLED || dt <= 0f
+                || (body.velocityX == 0f && body.velocityY == 0f && body.velocityZ == 0f)) {
+            body.trailTimeAccumulator = 0f;
+            return;
+        }
+        body.trailTimeAccumulator += dt;
+        int recorded = 0;
+        while (body.trailTimeAccumulator >= TRAIL_INTERVAL && recorded < TRAIL_LENGTH) {
+            body.trail.record(body.x, body.y, body.z);
+            body.trailTimeAccumulator -= TRAIL_INTERVAL;
+            recorded++;
+        }
+        // Buang backlog pada dt sangat besar, tetapi simpan sisa waktu pecahan interval.
+        if (body.trailTimeAccumulator >= TRAIL_INTERVAL) {
+            body.trailTimeAccumulator %= TRAIL_INTERVAL;
+        }
+    }
+
+    private void clearTrail(Body body) {
+        body.trail.clear();
+        body.trailTimeAccumulator = 0f;
     }
 
     private void arrangeReadyBodies() {

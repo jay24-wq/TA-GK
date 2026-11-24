@@ -19,6 +19,8 @@ public class Body {
     public float visualScale = 1f;
     public float vanishTimeRemaining;
     public boolean active = true;
+    public final TrailBuffer trail;
+    float trailTimeAccumulator;
 
     public Body(float x, float y, float z, float radius, Type type) {
         this.x = x;
@@ -27,5 +29,6 @@ public class Body {
         this.radius = radius;
         this.mass = 1f;
         this.type = type;
+        this.trail = new TrailBuffer(GameWorld.TRAIL_LENGTH);
     }
 }

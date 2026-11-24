@@ -10,6 +10,7 @@ pasangan dengan bentuk sama menghilang dan menambah skor.
 - Seret area permainan untuk memutar tampilan wadah dan semua objek.
 - Pasangan bentuk sama langsung menambah skor lalu menyusut selama 0,3 detik;
   tumbukan bentuk berbeda saling memantul.
+- Objek bergerak meninggalkan enam salinan jejak yang makin kecil dan pudar.
 
 ## Kontrol
 
@@ -20,3 +21,6 @@ pasangan dengan bentuk sama menghilang dan menambah skor.
   putar tampilan. Seret horizontal mengubah yaw; seret vertikal mengubah pitch.
 
 Rotasi hanya mengubah tampilan, tidak mengubah koordinat atau aturan fisika.
+
+Tahap 5 tidak dikerjakan karena limas sudah digabung ke Tahap 4; massa dari
+volume (6c) dan sensor kemiringan (6d) dibatalkan.

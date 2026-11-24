@@ -3,6 +3,8 @@ package com.kelompok.bouncingball;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLU;
 
+import java.util.List;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -26,6 +28,11 @@ public class GameRenderer implements GLSurfaceView.Renderer {
     private static final float[] LIGHT_DIFFUSE = {0.9f, 0.9f, 0.85f, 1f};
     // w=1 berarti sumber cahaya berada pada posisi, bukan arah tak berhingga.
     private static final float[] LIGHT_POSITION = {4f, 6f, 5f, 1f};
+    // Alpha turun per umur supaya enam salinan membentuk ekor yang memudar.
+    private static final float[] TRAIL_ALPHAS = {0.40f, 0.32f, 0.24f, 0.16f, 0.10f, 0.05f};
+    // Skala salinan terbaru sampai yang terlama, agar ekor tampak menyusut.
+    private static final float TRAIL_NEWEST_SCALE = 0.9f;
+    private static final float TRAIL_OLDEST_SCALE = 0.4f;
 
     private GameWorld world;
     private final ViewRotation viewRotation = new ViewRotation();
@@ -102,7 +109,9 @@ public class GameRenderer implements GLSurfaceView.Renderer {
         world.update(dt);
         notifyListener();
 
-        for (Body body : world.getBodies()) {
+        List<Body> bodies = world.getBodies();
+        for (int index = 0; index < bodies.size(); index++) {
+            Body body = bodies.get(index);
             if (body.state == Body.State.REMOVED) {
                 continue;
             }
@@ -120,6 +129,7 @@ public class GameRenderer implements GLSurfaceView.Renderer {
             gl.glPopMatrix();
         }
 
+        drawTrails(gl, bodies);
         drawContainerUnlit(gl);
     }
 
@@ -146,6 +156,46 @@ public class GameRenderer implements GLSurfaceView.Renderer {
     private void drawContainerUnlit(GL10 gl) {
         gl.glDisable(GL10.GL_LIGHTING);
         container.draw(gl);
+        gl.glEnable(GL10.GL_LIGHTING);
+    }
+
+    private void drawTrails(GL10 gl, List<Body> bodies) {
+        if (!GameWorld.TRAIL_ENABLED) {
+            return;
+        }
+        gl.glEnable(GL10.GL_BLEND);
+        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glDepthMask(false);
+        for (int index = 0; index < bodies.size(); index++) {
+            Body body = bodies.get(index);
+            if (!body.active || body.state != Body.State.ACTIVE) {
+                continue;
+            }
+            int trailSize = body.trail.size();
+            for (int age = 0; age < trailSize; age++) {
+                // Ghost tidak ikut cahaya agar warna dan alpha konsisten saat wadah diputar.
+                gl.glDisable(GL10.GL_LIGHTING);
+                float ageRatio = (float) age / (GameWorld.TRAIL_LENGTH - 1);
+                float scale = TRAIL_NEWEST_SCALE
+                        + (TRAIL_OLDEST_SCALE - TRAIL_NEWEST_SCALE) * ageRatio;
+                float radius = body.radius * scale;
+                gl.glPushMatrix();
+                gl.glTranslatef(body.trail.getX(age), body.trail.getY(age), body.trail.getZ(age));
+                gl.glScalef(radius, radius, radius);
+                float alpha = TRAIL_ALPHAS[age];
+                if (body.type == Body.Type.BALL) {
+                    gl.glColor4f(0.2f, 0.78f, 1f, alpha);
+                    sphere.draw(gl);
+                } else {
+                    gl.glColor4f(1f, 0.55f, 0.18f, alpha);
+                    pyramid.draw(gl);
+                }
+                gl.glPopMatrix();
+                gl.glEnable(GL10.GL_LIGHTING);
+            }
+        }
+        gl.glDepthMask(true);
+        gl.glDisable(GL10.GL_BLEND);
         gl.glEnable(GL10.GL_LIGHTING);
     }
 

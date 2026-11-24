@@ -21,6 +21,8 @@ public class GameWorldVanishTest {
         assertEquals(Body.State.VANISHING, second.state);
         assertFalse(first.active);
         assertFalse(second.active);
+        assertEquals(0, first.trail.size());
+        assertEquals(0, second.trail.size());
         assertEquals(1f, first.visualScale, 0f);
         assertEquals(GameStatus.PLAYING, world.getStatus());
 
@@ -45,6 +47,7 @@ public class GameWorldVanishTest {
 
         assertEquals(Body.State.REMOVED, body.state);
         assertEquals(0f, body.visualScale, 0f);
+        assertEquals(0, body.trail.size());
     }
 
     @Test
@@ -71,6 +74,8 @@ public class GameWorldVanishTest {
         world.start();
         first.velocityX = second.velocityX = 0f;
         first.velocityZ = second.velocityZ = 0f;
+        first.trail.record(first.x, first.y, first.z);
+        second.trail.record(second.x, second.y, second.z);
         world.update(INITIAL_DT);
         return world;
     }
