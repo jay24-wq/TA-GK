@@ -7,9 +7,23 @@ import java.util.Random;
 /** Simulasi fisika murni agar mudah dijelaskan dan diuji tanpa Android. */
 public class GameWorld {
     private static final int MAX_BODIES = 12;
-    // Nilai gravitasi diskalakan agar gerak tetap terbaca di ruang wadah yang kecil.
+    // Cukup kuat untuk membuat objek jatuh jelas sebelum menyentuh lantai.
     private static final float GRAVITY_Y = -4.0f;
-    private static final float RESTITUTION = 0.94f;
+    // Pantulan dinding hampir elastis agar energi tidak cepat habis.
+    static final float RESTITUTION = 0.98f;
+    // Batas kecepatan menjaga gerak tetap hidup tanpa melesat berlebihan.
+    static final float MIN_SPEED = 2.0f;
+    static final float MAX_SPEED = 3.5f;
+    // Kecepatan samping kecil membuat awal permainan tampak jatuh lurus.
+    private static final float MAX_START_SIDE_SPEED = 0.1f;
+    // Lontaran vertikal minimum memastikan objek mencapai atap.
+    private static final float MIN_LAUNCH_UPWARD_SPEED = 0.4f * MIN_SPEED;
+    // Ambang menghindari normalisasi vektor yang panjangnya nyaris nol.
+    private static final float MIN_DIRECTION_LENGTH_SQUARED = 0.000001f;
+    // Kecepatan nol diberi arah baru, bukan dibiarkan berhenti.
+    private static final float ZERO_SPEED_EPSILON = 0.000001f;
+    // Nilai lama dipertahankan agar aturan tumbukan antar-objek tidak berubah.
+    private static final float COLLISION_RESTITUTION = 0.94f;
     private final Random random;
     private final List<Body> bodies = new ArrayList<>();
     private GameStatus status;
@@ -33,11 +47,14 @@ public class GameWorld {
             if (!body.active) {
                 continue;
             }
-            body.velocityY += GRAVITY_Y * dt;
+            if (!body.hasLanded) {
+                body.velocityY += GRAVITY_Y * dt;
+            }
             body.x += body.velocityX * dt;
             body.y += body.velocityY * dt;
             body.z += body.velocityZ * dt;
             bounceAtWalls(body);
+            keepMoving(body);
         }
         checkCollisions();
         if (!hasActiveBodies()) {
@@ -51,8 +68,10 @@ public class GameWorld {
         }
         status = GameStatus.PLAYING;
         for (Body body : bodies) {
-            body.velocityX = randomBetween(-0.7f, 0.7f);
-            body.velocityZ = randomBetween(-0.7f, 0.7f);
+            body.hasLanded = false;
+            body.velocityX = randomBetween(-MAX_START_SIDE_SPEED, MAX_START_SIDE_SPEED);
+            body.velocityY = 0f;
+            body.velocityZ = randomBetween(-MAX_START_SIDE_SPEED, MAX_START_SIDE_SPEED);
         }
     }
 
@@ -102,12 +121,11 @@ public class GameWorld {
         }
         if (body.y < -limit) {
             body.y = -limit;
-            body.velocityY = Math.abs(body.velocityY) * RESTITUTION;
-            // Dorongan ringan menjaga bola tidak kehilangan seluruh gerak di lantai.
-            if (body.velocityY < 0.7f) {
-                body.velocityY = randomBetween(1.2f, 2.0f);
-                body.velocityX += randomBetween(-0.25f, 0.25f);
-                body.velocityZ += randomBetween(-0.25f, 0.25f);
+            if (!body.hasLanded) {
+                body.hasLanded = true;
+                launchAfterLanding(body);
+            } else {
+                body.velocityY = Math.abs(body.velocityY) * RESTITUTION;
             }
         } else if (body.y > limit) {
             body.y = limit;
@@ -120,6 +138,53 @@ public class GameWorld {
             body.z = limit;
             body.velocityZ = -Math.abs(body.velocityZ) * RESTITUTION;
         }
+    }
+
+    private void launchAfterLanding(Body body) {
+        float[] direction;
+        float speed;
+        do {
+            direction = randomUnitDirection();
+            speed = randomBetween(MIN_SPEED, MAX_SPEED);
+        } while (direction[1] * speed < MIN_LAUNCH_UPWARD_SPEED);
+        body.velocityX = direction[0] * speed;
+        body.velocityY = direction[1] * speed;
+        body.velocityZ = direction[2] * speed;
+    }
+
+    private void keepMoving(Body body) {
+        if (!body.active || !body.hasLanded) {
+            return;
+        }
+        float speed = (float) Math.sqrt(body.velocityX * body.velocityX
+                + body.velocityY * body.velocityY + body.velocityZ * body.velocityZ);
+        if (speed < ZERO_SPEED_EPSILON) {
+            float[] direction = randomUnitDirection();
+            body.velocityX = direction[0] * MIN_SPEED;
+            body.velocityY = direction[1] * MIN_SPEED;
+            body.velocityZ = direction[2] * MIN_SPEED;
+        } else if (speed < MIN_SPEED || speed > MAX_SPEED) {
+            float targetSpeed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
+            float scale = targetSpeed / speed;
+            body.velocityX *= scale;
+            body.velocityY *= scale;
+            body.velocityZ *= scale;
+        }
+    }
+
+    private float[] randomUnitDirection() {
+        float x;
+        float y;
+        float z;
+        float lengthSquared;
+        do {
+            x = randomBetween(-1f, 1f);
+            y = randomBetween(-1f, 1f);
+            z = randomBetween(-1f, 1f);
+            lengthSquared = x * x + y * y + z * z;
+        } while (lengthSquared <= MIN_DIRECTION_LENGTH_SQUARED || lengthSquared > 1f);
+        float inverseLength = 1f / (float) Math.sqrt(lengthSquared);
+        return new float[]{x * inverseLength, y * inverseLength, z * inverseLength};
     }
 
     private float randomBetween(float minimum, float maximum) {
@@ -160,6 +225,8 @@ public class GameWorld {
                     // Koreksi posisi tumbukan bisa mendekatkan objek ke sisi wadah.
                     bounceAtWalls(first);
                     bounceAtWalls(second);
+                    keepMoving(first);
+                    keepMoving(second);
                 }
             }
         }
@@ -179,7 +246,7 @@ public class GameWorld {
                 + (second.velocityY - first.velocityY) * normalY
                 + (second.velocityZ - first.velocityZ) * normalZ;
         if (relativeSpeed < 0f) {
-            float impulse = -(1f + RESTITUTION) * relativeSpeed / inverseMassSum;
+            float impulse = -(1f + COLLISION_RESTITUTION) * relativeSpeed / inverseMassSum;
             first.velocityX -= impulse * inverseFirstMass * normalX;
             first.velocityY -= impulse * inverseFirstMass * normalY;
             first.velocityZ -= impulse * inverseFirstMass * normalZ;

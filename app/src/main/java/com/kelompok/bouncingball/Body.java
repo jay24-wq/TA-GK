@@ -10,6 +10,7 @@ public class Body {
     public float velocityX;
     public float velocityY;
     public float velocityZ;
+    public boolean hasLanded;
     public final float radius;
     public final float mass;
     public final Type type;
