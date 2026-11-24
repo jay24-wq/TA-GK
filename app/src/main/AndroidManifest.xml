@@ -12,13 +12,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BouncingBall">
         <activity
-            android:name=".MainActivity"
+            android:name="com.kelompok.bouncingball.MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

@@ -1,4 +1,4 @@
-package com.example.bouncingball;
+package com.kelompok.bouncingball;
 
 import org.junit.Test;
 
