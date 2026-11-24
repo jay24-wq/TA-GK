@@ -7,7 +7,23 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class GameRenderer implements GLSurfaceView.Renderer {
+    // Sudut vertikal memberi perspektif moderat untuk adegan 3D.
+    private static final float VERTICAL_FIELD_OF_VIEW_DEGREES = 45f;
+    // Radius bola yang membatasi kubus 2 x 2 x 2 di semua orientasi.
+    private static final float CONTAINER_BOUNDING_RADIUS = (float) Math.sqrt(3f);
+    // Jarak ekstra memberi ruang piksel agar rusuk tidak tepat menempel tepi.
+    private static final float CAMERA_FIT_MARGIN = 1.05f;
+    // Arah pandang lama dipertahankan; hanya jaraknya disesuaikan dengan layar.
+    private static final float CAMERA_DIRECTION_X = 3.8f;
+    private static final float CAMERA_DIRECTION_Y = 3.2f;
+    private static final float CAMERA_DIRECTION_Z = 5.8f;
+    private static final float CAMERA_DIRECTION_LENGTH = (float) Math.sqrt(
+            CAMERA_DIRECTION_X * CAMERA_DIRECTION_X
+                    + CAMERA_DIRECTION_Y * CAMERA_DIRECTION_Y
+                    + CAMERA_DIRECTION_Z * CAMERA_DIRECTION_Z);
+
     private GameWorld world;
+    private final ViewRotation viewRotation = new ViewRotation();
     private final SphereMesh sphere = new SphereMesh(12, 18);
     private final PyramidMesh pyramid = new PyramidMesh();
     private final ContainerMesh container = new ContainerMesh();
@@ -16,6 +32,7 @@ public class GameRenderer implements GLSurfaceView.Renderer {
     private int lastBallScore = -1;
     private int lastPyramidScore = -1;
     private boolean finishNotified;
+    private float cameraDistance;
 
     public void initializeWorld() {
         if (world == null) {
@@ -34,12 +51,20 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
+        int safeWidth = Math.max(width, 1);
         int safeHeight = Math.max(height, 1);
-        gl.glViewport(0, 0, width, safeHeight);
+        float aspectRatio = (float) safeWidth / safeHeight;
+        gl.glViewport(0, 0, safeWidth, safeHeight);
         gl.glMatrixMode(GL10.GL_PROJECTION);
         gl.glLoadIdentity();
-        GLU.gluPerspective(gl, 45f, (float) width / safeHeight, 0.1f, 100f);
+        GLU.gluPerspective(gl, VERTICAL_FIELD_OF_VIEW_DEGREES, aspectRatio, 0.1f, 100f);
         gl.glMatrixMode(GL10.GL_MODELVIEW);
+
+        float verticalHalfFov = (float) Math.toRadians(VERTICAL_FIELD_OF_VIEW_DEGREES / 2f);
+        float horizontalHalfFov = (float) Math.atan(Math.tan(verticalHalfFov) * aspectRatio);
+        float limitingHalfFov = Math.min(verticalHalfFov, horizontalHalfFov);
+        cameraDistance = CONTAINER_BOUNDING_RADIUS * CAMERA_FIT_MARGIN
+                / (float) Math.sin(limitingHalfFov);
     }
 
     @Override
@@ -50,7 +75,11 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
         gl.glLoadIdentity();
-        GLU.gluLookAt(gl, 3.8f, 3.2f, 5.8f, 0f, 0f, 0f, 0f, 1f, 0f);
+        float cameraScale = cameraDistance / CAMERA_DIRECTION_LENGTH;
+        GLU.gluLookAt(gl, CAMERA_DIRECTION_X * cameraScale, CAMERA_DIRECTION_Y * cameraScale,
+                CAMERA_DIRECTION_Z * cameraScale, 0f, 0f, 0f, 0f, 1f, 0f);
+        gl.glRotatef(viewRotation.getPitchDegrees(), 1f, 0f, 0f);
+        gl.glRotatef(viewRotation.getYawDegrees(), 0f, 1f, 0f);
         if (world == null) {
             container.draw(gl);
             return;
@@ -88,6 +117,10 @@ public class GameRenderer implements GLSurfaceView.Renderer {
         lastBallScore = -1;
         lastPyramidScore = -1;
         finishNotified = false;
+    }
+
+    public void rotateViewBy(float deltaXPixel, float deltaYPixel) {
+        viewRotation.rotateBy(deltaXPixel, deltaYPixel);
     }
 
     public GameWorld getWorld() {
