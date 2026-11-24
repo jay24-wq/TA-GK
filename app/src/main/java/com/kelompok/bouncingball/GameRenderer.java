@@ -21,6 +21,11 @@ public class GameRenderer implements GLSurfaceView.Renderer {
             CAMERA_DIRECTION_X * CAMERA_DIRECTION_X
                     + CAMERA_DIRECTION_Y * CAMERA_DIRECTION_Y
                     + CAMERA_DIRECTION_Z * CAMERA_DIRECTION_Z);
+    // Ambient menjaga sisi gelap tetap berwarna; diffuse memberi arah cahaya utama.
+    private static final float[] LIGHT_AMBIENT = {0.24f, 0.24f, 0.28f, 1f};
+    private static final float[] LIGHT_DIFFUSE = {0.9f, 0.9f, 0.85f, 1f};
+    // w=1 berarti sumber cahaya berada pada posisi, bukan arah tak berhingga.
+    private static final float[] LIGHT_POSITION = {4f, 6f, 5f, 1f};
 
     private GameWorld world;
     private final ViewRotation viewRotation = new ViewRotation();
@@ -42,10 +47,18 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        gl.glClearColor(0.03f, 0.08f, 0.14f, 1f);
+        gl.glClearColor(0.0f, 0.0f, 0.0f, 0f);
         gl.glEnable(GL10.GL_DEPTH_TEST);
         gl.glDisable(GL10.GL_CULL_FACE);
         gl.glFrontFace(GL10.GL_CCW);
+        gl.glEnable(GL10.GL_LIGHTING);
+        gl.glEnable(GL10.GL_LIGHT0);
+        // Default GL_COLOR_MATERIAL pada GL10 melacak ambient+diffuse untuk kedua sisi.
+        gl.glEnable(GL10.GL_COLOR_MATERIAL);
+        gl.glEnable(GL10.GL_NORMALIZE);
+        gl.glShadeModel(GL10.GL_SMOOTH);
+        gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_AMBIENT, LIGHT_AMBIENT, 0);
+        gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_DIFFUSE, LIGHT_DIFFUSE, 0);
         previousFrameNanos = System.nanoTime();
     }
 
@@ -75,13 +88,15 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
         gl.glLoadIdentity();
+        // Posisi diatur dalam koordinat layar sebelum kamera dan rotasi model-view.
+        gl.glLightfv(GL10.GL_LIGHT0, GL10.GL_POSITION, LIGHT_POSITION, 0);
         float cameraScale = cameraDistance / CAMERA_DIRECTION_LENGTH;
         GLU.gluLookAt(gl, CAMERA_DIRECTION_X * cameraScale, CAMERA_DIRECTION_Y * cameraScale,
                 CAMERA_DIRECTION_Z * cameraScale, 0f, 0f, 0f, 0f, 1f, 0f);
         gl.glRotatef(viewRotation.getPitchDegrees(), 1f, 0f, 0f);
         gl.glRotatef(viewRotation.getYawDegrees(), 0f, 1f, 0f);
         if (world == null) {
-            container.draw(gl);
+            drawContainerUnlit(gl);
             return;
         }
         world.update(dt);
@@ -104,7 +119,7 @@ public class GameRenderer implements GLSurfaceView.Renderer {
             gl.glPopMatrix();
         }
 
-        container.draw(gl);
+        drawContainerUnlit(gl);
     }
 
     public void setListener(GameListener listener) {
@@ -125,6 +140,12 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 
     public GameWorld getWorld() {
         return world;
+    }
+
+    private void drawContainerUnlit(GL10 gl) {
+        gl.glDisable(GL10.GL_LIGHTING);
+        container.draw(gl);
+        gl.glEnable(GL10.GL_LIGHTING);
     }
 
     private void notifyListener() {
